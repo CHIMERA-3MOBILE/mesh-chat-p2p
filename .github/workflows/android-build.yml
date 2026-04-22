@@ -1,0 +1,87 @@
+name: Android APK (Capacitor)
+
+on:
+  push:
+    branches: ["**"]
+  workflow_dispatch: {}
+
+jobs:
+  build-debug:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Setup Java (Gradle)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Sync Capacitor Android
+        run: npx cap sync android
+
+      - name: Build Debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+
+  # Optional: signed release APK
+  #
+  # 1) Create these GitHub Secrets:
+  #   - ANDROID_KEYSTORE_BASE64  (base64 of your .jks)
+  #   - ANDROID_KEYSTORE_PASSWORD
+  #   - ANDROID_KEY_ALIAS
+  #   - ANDROID_KEY_PASSWORD
+  #
+  # 2) Uncomment this job to build a signed release APK.
+  #
+  # build-release:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-node@v4
+  #       with:
+  #         node-version: 20
+  #         cache: npm
+  #     - uses: actions/setup-java@v4
+  #       with:
+  #         distribution: temurin
+  #         java-version: 17
+  #         cache: gradle
+  #     - run: npm ci
+  #     - run: npx cap sync android
+  #     - name: Decode keystore
+  #       run: |
+  #         echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/release.jks
+  #     - name: Build Release APK
+  #       working-directory: android
+  #       env:
+  #         ANDROID_KEYSTORE_PATH: ${{ github.workspace }}/android/release.jks
+  #         ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+  #         ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+  #         ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+  #       run: ./gradlew assembleRelease
+  #     - uses: actions/upload-artifact@v4
+  #       with:
+  #         name: app-release-apk
+  #         path: android/app/build/outputs/apk/release/*.apk
+
